@@ -1,0 +1,14 @@
+repos:
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+
+  - repo: local
+    hooks:
+      - id: gitleaks-local
+        name: gitleaks-local
+        entry: gitleaks detect --source . --exit-code 1
+        language: system
+        files: ''
