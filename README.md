@@ -1,93 +1,124 @@
-# LightStudio (Android)
+# Lumina Light Studio
 
-LightStudio is a Java-based Android application built with Capacitor. It provides a native Android shell (BridgeActivity) for a web-backed editor/light-studio experience. The repository contains a single Android app module under `app/` and Gradle build configuration to compile and package the app.
-
-This README gives a concise developer-oriented overview, build/run instructions, configuration notes (including Capacitor and Google Services), and security guidance for handling keys and service account files.
-
-## Stack
-
-- Language: Java
-- Platform: Android (Gradle)
-- Web-native bridge: Capacitor
+Lumina Light Studio is an AI-assisted photo relighting editor for the web,
+Windows, and Android. It combines a React/Vite interface, a hardened
+Express/Gemini backend, an Electron desktop shell, and a Capacitor Android app.
 
 ## Project layout
 
-```
-app/                       Android application module (source, manifest, res)
-  build.gradle             module Gradle config
-  src/                     java, resources, manifest
-  proguard-rules.pro       proguard/r8 rules
-capacitor-cordova-android-plugins/  (subproject for Cordova plugin support)
-build.gradle                root Gradle build
-gradle.properties           Gradle properties
-gradlew, gradlew.bat        Gradle wrapper
-variables.gradle            shared build versions and variables
-settings.gradle             project modules and Capacitor settings
+```text
+components/       React editor components
+electron/         Electron main and preload processes
+services/         image generation, presets, export, and scene tools
+tests/            server integration tests
+android/          Android Studio and Gradle project
+server.ts         Express API and production web server
+App.tsx           main editor UI
 ```
 
-## Getting started (developer)
+Generated folders such as `dist`, `dist-desktop`, `dist-electron`,
+`node_modules`, Android build outputs, and local environment files are not
+committed.
 
-Prerequisites
-- Java JDK (17+ recommended by Android Gradle toolchain)
-- Android SDK (platforms and build-tools matching compileSdkVersion)
-- Android Studio (recommended) or command-line SDK tools
-- A connected Android device or emulator
+## Prerequisites
 
-Quick build & install (from project root)
+- Node.js 20 or newer
+- pnpm
+- A Gemini API key for image generation
+- Android Studio, Android SDK, and JDK 21 for Android builds
 
-```bash
-# build the debug APK
-./gradlew :app:assembleDebug
+## Setup
 
-# install to connected device/emulator
-./gradlew :app:installDebug
+```powershell
+pnpm install
+Copy-Item .env.example .env.local
 ```
 
-Open in Android Studio
-- Open the repository in Android Studio (File → Open) and run the `app` configuration.
+Add your server-side `GEMINI_API_KEY` to `.env.local`. Never commit that file.
+Review `.env.example` for deployment origins, API access tokens, model
+allowlists, image-host allowlists, and resource limits.
 
-Capacitor
-- This project includes Capacitor integration. The Android module applies `capacitor.build.gradle`/`capacitor.settings.gradle` as part of the build.
-- Web assets (the Capacitor web app) are expected to be placed under `app/src/main/assets/public` when integrated; that folder is currently ignored in .gitignore because it is typically generated/copied.
+## Web development
 
-## Configuration
+```powershell
+pnpm dev
+```
 
-google-services.json
-- If you use Firebase/Google services, place `google-services.json` in `app/`.
-- The `app/build.gradle` will apply the Google services plugin only when `google-services.json` exists.
-- Do NOT commit `google-services.json` to the repository; add it to your local .gitignore and use secure distribution for CI.
+Open `http://localhost:3000`.
 
-Signing keys
-- Keep Android keystores (`*.jks`, `*.keystore`) out of source control. Configure signing in CI or local `gradle.properties`/`local.properties` and ensure keys are stored in a secret manager.
+## Windows desktop
 
-Environment & secrets
-- Do not commit `.env`, `secrets.properties`, service account JSON, or private keys. Use CI/CD secret storage or a cloud secret manager.
+Run the desktop app against the development server:
 
-## Security & repository hygiene
+```powershell
+pnpm desktop:dev
+```
 
-- This repository intentionally ignores common sensitive files in `.gitignore`. Ensure the following are never committed:
-  - `google-services.json`, `*.jks`, `*.pem`, `*.p12`, `*.key`, `.env`, `secrets.properties`.
-- Before publishing or sharing the repository publicly, run a history-aware secret scan (gitleaks, trufflehog, git-secrets) to ensure no secrets were committed earlier.
-- If a secret is discovered in history, rotate/revoke it immediately and remove it from the git history (tools: `git-filter-repo` or `bfg`). See SECURITY.md or repository CONTRIBUTING for remediation steps.
+Build the portable Windows application:
 
-## Development notes
+```powershell
+pnpm desktop:build
+```
 
-- Entry point: `app/src/main/java/com/ailight/editor/MainActivity.java` — a minimal Capacitor BridgeActivity.
-- Android SDK and dependency versions are defined in `variables.gradle`.
-- Capacitor/cordova plugin stubs are under `capacitor-cordova-android-plugins/`.
+The packaged application is written to `dist-electron`. The production desktop
+server loads Vite only in development, binds to loopback on an available port,
+and protects API requests with a per-launch access token.
 
-## Contributing
+## Android
 
-- Please open issues or PRs describing the change.
-- Add unit/instrumentation tests when applicable.
-- Avoid committing secrets. Add `.gitignore` entries and pre-commit hooks that scan for secrets (recommended: pre-commit + detect-secrets or gitleaks pre-commit).
+The Android project lives under `android/`. Rebuild and sync the web UI before
+opening it in Android Studio:
+
+```powershell
+pnpm android:sync
+pnpm android:open
+```
+
+For emulator development, start the backend and sync the emulator mode in
+separate terminals:
+
+```powershell
+pnpm dev
+pnpm android:sync:emulator
+```
+
+For a USB- or Wi-Fi-debugged device:
+
+```powershell
+pnpm android:sync:device
+adb reverse tcp:3000 tcp:3000
+```
+
+Production Android builds require a public HTTPS backend URL and private release
+signing. The Gemini key must remain on the server and must never be bundled into
+the app.
+
+## Production server
+
+```powershell
+pnpm build
+$env:NODE_ENV = 'production'
+$env:GEMINI_API_KEY = 'your_server_side_key'
+$env:API_ACCESS_TOKEN = 'your_long_random_access_token'
+$env:HOST = '0.0.0.0'
+pnpm start
+```
+
+Use a real authentication layer and gateway-level abuse protection for a public
+deployment. A shared `VITE_API_ACCESS_TOKEN` is suitable only for a private,
+self-hosted client because Vite embeds it in the client bundle.
+
+## Verification
+
+```powershell
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+See `SECURITY.md` and `CONTRIBUTING.md` for secret-handling and contribution
+requirements.
 
 ## License
 
-This repository currently has no explicit license file. If you maintain this repo, add a LICENSE (for example MIT) to clarify terms.
-
----
-
-If you want, I can:
-- Add a SECURITY.md with immediate remediation steps and recommended scanning commands.
-- Commit a recommended `.gitignore` patch and a pre-commit configuration (gitleaks/detect-secrets) to help prevent accidental commits of secrets.
+MIT. See `LICENSE`.
