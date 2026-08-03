@@ -1,0 +1,8 @@
+{
+  "name": "AI Light Editor",
+  "description": "An advanced AI-powered photo editing application that allows users to add and manipulate dynamic light sources on their images. Users can add various light types like volumetric rays, lens flares, and lightning, then adjust their position, exposure, and other properties to achieve stunning, realistic lighting effects.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
